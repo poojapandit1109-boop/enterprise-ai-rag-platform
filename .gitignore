@@ -18,3 +18,7 @@ Thumbs.db
 *.db
 
 secrets/
+
+# Project data
+data/documents/*
+!data/documents/.gitkeep
