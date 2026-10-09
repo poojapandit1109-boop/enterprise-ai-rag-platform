@@ -12,7 +12,11 @@ class Base(DeclarativeBase):
 class Document(Base):
     __tablename__ = "documents"
 
-    id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
+    id: Mapped[int] = mapped_column(
+        Integer,
+        primary_key=True,
+        index=True,
+    )
 
     filename: Mapped[str] = mapped_column(
         String(255),
@@ -21,6 +25,16 @@ class Document(Base):
 
     title: Mapped[str | None] = mapped_column(
         String(500),
+        nullable=True,
+    )
+
+    department: Mapped[str | None] = mapped_column(
+        String(100),
+        nullable=True,
+    )
+
+    document_type: Mapped[str | None] = mapped_column(
+        String(100),
         nullable=True,
     )
 

@@ -11,21 +11,37 @@ MODEL_NAME = "google/flan-t5-small"
 # Maximum vector distance considered relevant.
 RELEVANCE_THRESHOLD = 0.80
 
-tokenizer = AutoTokenizer.from_pretrained(MODEL_NAME)
-model = AutoModelForSeq2SeqLM.from_pretrained(MODEL_NAME)
+
+tokenizer = AutoTokenizer.from_pretrained(
+    MODEL_NAME
+)
+
+model = AutoModelForSeq2SeqLM.from_pretrained(
+    MODEL_NAME
+)
 
 
 def generate_answer(
     question: str,
     top_k: int = 3,
+    department: str | None = None,
+    document_type: str | None = None,
 ) -> dict:
-    # --------------------------------------------------
+    """
+    Generate a RAG answer using hybrid retrieval,
+    optional metadata filtering, reranking, and
+    a local language model.
+    """
+
+    # ---------------------------------------------
     # Step 1: Hybrid retrieval
-    # --------------------------------------------------
+    # ---------------------------------------------
 
     retrieval_results = hybrid_search(
         question,
         top_k=5,
+        department=department,
+        document_type=document_type,
     )
 
     if not retrieval_results:
@@ -38,9 +54,9 @@ def generate_answer(
             "sources": [],
         }
 
-    # --------------------------------------------------
+    # ---------------------------------------------
     # Step 2: Rerank retrieved candidates
-    # --------------------------------------------------
+    # ---------------------------------------------
 
     results = rerank_results(
         query=question,
@@ -58,9 +74,9 @@ def generate_answer(
             "sources": [],
         }
 
-    # --------------------------------------------------
+    # ---------------------------------------------
     # Step 3: Relevance check
-    # --------------------------------------------------
+    # ---------------------------------------------
 
     best_result = results[0]
 
@@ -88,24 +104,24 @@ def generate_answer(
             "sources": [],
         }
 
-    # --------------------------------------------------
-    # Step 4: Build context from reranked results
-    # --------------------------------------------------
+    # ---------------------------------------------
+    # Step 4: Build context
+    # ---------------------------------------------
 
     context = build_context(results)
 
-    # --------------------------------------------------
+    # ---------------------------------------------
     # Step 5: Build RAG prompt
-    # --------------------------------------------------
+    # ---------------------------------------------
 
     prompt = build_rag_prompt(
         question,
         context,
     )
 
-    # --------------------------------------------------
+    # ---------------------------------------------
     # Step 6: Generate answer
-    # --------------------------------------------------
+    # ---------------------------------------------
 
     inputs = tokenizer(
         prompt,
@@ -124,16 +140,16 @@ def generate_answer(
         skip_special_tokens=True,
     ).strip()
 
-    # --------------------------------------------------
+    # ---------------------------------------------
     # Step 7: Add deterministic citation
-    # --------------------------------------------------
+    # ---------------------------------------------
 
     if results and "[Source" not in answer:
         answer = f"{answer} [Source 1]"
 
-    # --------------------------------------------------
+    # ---------------------------------------------
     # Step 8: Build structured sources
-    # --------------------------------------------------
+    # ---------------------------------------------
 
     sources = []
 
@@ -147,6 +163,12 @@ def generate_answer(
                 "document_id": result["document_id"],
                 "filename": result["filename"],
                 "title": result["title"],
+                "department": result.get(
+                    "department"
+                ),
+                "document_type": result.get(
+                    "document_type"
+                ),
                 "chunk_index": result["chunk_index"],
                 "fusion_score": result.get(
                     "fusion_score",
@@ -169,5 +191,9 @@ def generate_answer(
     return {
         "question": question,
         "answer": answer,
+        "filters": {
+            "department": department,
+            "document_type": document_type,
+        },
         "sources": sources,
     }

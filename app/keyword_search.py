@@ -7,23 +7,29 @@ from app.models import Document, DocumentChunk
 def keyword_search(
     query: str,
     top_k: int = 3,
+    department: str | None = None,
+    document_type: str | None = None,
 ):
+    """
+    Perform PostgreSQL full-text keyword search.
+
+    Optional metadata filters restrict results by
+    department and/or document type.
+    """
+
     db = SessionLocal()
 
     try:
-        # Convert the user's query into a PostgreSQL full-text query
         search_query = func.websearch_to_tsquery(
             "english",
             query,
         )
 
-        # Convert document chunks into searchable text vectors
         document_vector = func.to_tsvector(
             "english",
             DocumentChunk.content,
         )
 
-        # Calculate keyword relevance
         rank = func.ts_rank_cd(
             document_vector,
             search_query,
@@ -34,6 +40,8 @@ def keyword_search(
                 DocumentChunk,
                 Document.filename,
                 Document.title,
+                Document.department,
+                Document.document_type,
                 rank.label("rank"),
             )
             .join(
@@ -43,9 +51,29 @@ def keyword_search(
             .where(
                 document_vector.op("@@")(search_query)
             )
-            .order_by(
-                rank.desc()
+        )
+
+        # ---------------------------------------------
+        # Optional department filter
+        # ---------------------------------------------
+
+        if department:
+            statement = statement.where(
+                Document.department == department
             )
+
+        # ---------------------------------------------
+        # Optional document type filter
+        # ---------------------------------------------
+
+        if document_type:
+            statement = statement.where(
+                Document.document_type == document_type
+            )
+
+        statement = (
+            statement
+            .order_by(rank.desc())
             .limit(top_k)
         )
 
@@ -53,7 +81,14 @@ def keyword_search(
 
         results = []
 
-        for chunk, filename, title, rank_value in rows:
+        for (
+            chunk,
+            filename,
+            title,
+            department_value,
+            document_type_value,
+            rank_value,
+        ) in rows:
             results.append(
                 {
                     "chunk_id": chunk.id,
@@ -61,6 +96,8 @@ def keyword_search(
                     "chunk_index": chunk.chunk_index,
                     "filename": filename,
                     "title": title,
+                    "department": department_value,
+                    "document_type": document_type_value,
                     "content": chunk.content,
                     "rank": float(rank_value),
                 }

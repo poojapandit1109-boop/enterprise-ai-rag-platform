@@ -3,8 +3,12 @@ from pathlib import Path
 from fastapi import FastAPI, File, UploadFile
 from pydantic import BaseModel
 
+from app.logging_config import configure_logging
 from app.ingestion_service import ingest_pdf
 from app.orchestrator import process_question
+
+
+configure_logging()
 
 
 app = FastAPI(
@@ -17,6 +21,8 @@ app = FastAPI(
 class QuestionRequest(BaseModel):
     question: str
     top_k: int = 3
+    department: str | None = None
+    document_type: str | None = None
 
 
 @app.get("/")
@@ -38,12 +44,17 @@ def ask_question(request: QuestionRequest):
     return process_question(
         question=request.question,
         top_k=request.top_k,
+        department=request.department,
+        document_type=request.document_type,
     )
 
 
 @app.post("/documents/upload")
 async def upload_document(
-    file: UploadFile = File(...)
+    file: UploadFile = File(...),
+    title: str | None = None,
+    department: str | None = None,
+    document_type: str | None = None,
 ):
     documents_dir = Path("data/documents")
 
@@ -62,6 +73,9 @@ async def upload_document(
     result = ingest_pdf(
         file_path=str(file_path),
         filename=file.filename,
+        title=title,
+        department=department,
+        document_type=document_type,
     )
 
     return result

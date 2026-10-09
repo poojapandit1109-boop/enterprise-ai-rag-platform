@@ -5,26 +5,47 @@ from app.vector_search import semantic_search
 def hybrid_search(
     query: str,
     top_k: int = 3,
+    department: str | None = None,
+    document_type: str | None = None,
 ):
-    # Retrieve candidates from both search systems
+    """
+    Perform hybrid retrieval using:
+
+    1. Semantic vector search
+    2. Keyword search
+    3. Reciprocal Rank Fusion
+
+    Optional metadata filters can restrict results
+    by department and/or document type.
+    """
+
     vector_results = semantic_search(
         query,
         top_k=top_k,
+        department=department,
+        document_type=document_type,
     )
 
     keyword_results = keyword_search(
         query,
         top_k=top_k,
+        department=department,
+        document_type=document_type,
     )
 
-    # Reciprocal Rank Fusion
     fusion_scores = {}
     result_lookup = {}
 
-    # Store vector-search metadata
     vector_metadata = {}
 
-    for rank, result in enumerate(vector_results, start=1):
+    # ---------------------------------------------
+    # Add semantic search results
+    # ---------------------------------------------
+
+    for rank, result in enumerate(
+        vector_results,
+        start=1,
+    ):
         chunk_id = result["chunk_id"]
 
         fusion_scores[chunk_id] = (
@@ -38,8 +59,14 @@ def hybrid_search(
 
         result_lookup[chunk_id] = result.copy()
 
-    # Add keyword-search results
-    for rank, result in enumerate(keyword_results, start=1):
+    # ---------------------------------------------
+    # Add keyword search results
+    # ---------------------------------------------
+
+    for rank, result in enumerate(
+        keyword_results,
+        start=1,
+    ):
         chunk_id = result["chunk_id"]
 
         fusion_scores[chunk_id] = (
@@ -47,11 +74,13 @@ def hybrid_search(
             + 1 / (60 + rank)
         )
 
-        # Preserve the vector result if it already exists.
         if chunk_id not in result_lookup:
             result_lookup[chunk_id] = result.copy()
 
-    # Sort by combined fusion score
+    # ---------------------------------------------
+    # Rank using fusion score
+    # ---------------------------------------------
+
     ranked_chunk_ids = sorted(
         fusion_scores,
         key=fusion_scores.get,
@@ -70,7 +99,6 @@ def hybrid_search(
             {},
         ).get("vector_distance")
 
-        # Determine whether this chunk matched the keyword search
         result["keyword_match"] = any(
             keyword_result["chunk_id"] == chunk_id
             for keyword_result in keyword_results
