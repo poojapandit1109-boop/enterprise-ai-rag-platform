@@ -1,16 +1,13 @@
-services:
-  postgres:
-    image: pgvector/pgvector:pg16
-    container_name: enterprise-ai-postgres
+﻿services:
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: enterprise-ai-api
     restart: unless-stopped
+    env_file:
+      - .env
     environment:
-      POSTGRES_DB: enterprise_ai
-      POSTGRES_USER: ai_user
-      POSTGRES_PASSWORD: ai_password
+      DATABASE_URL: "${DATABASE_URL}"
     ports:
-      - "5432:5432"
-    volumes:
-      - postgres_data:/var/lib/postgresql/data
-
-volumes:
-  postgres_data:
+      - "8000:8000"
