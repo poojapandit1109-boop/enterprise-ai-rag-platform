@@ -1,167 +1,112 @@
-# Enterprise AI RAG Platform
+﻿# Enterprise AI RAG Platform
 
-An enterprise-oriented Retrieval-Augmented Generation (RAG) platform that combines hybrid search, vector retrieval, reranking, a local language model, SQL-based document queries, and prompt-injection protection.
-
-The project demonstrates an end-to-end approach to building an AI knowledge assistant that can answer questions from documents, route structured queries to a database, and return source information for document-grounded answers.
-
-## Table of Contents
-
-- [Overview](#overview)
-- [Architecture](#architecture)
-- [Key Features](#key-features)
-- [Technology Stack](#technology-stack)
-- [Project Structure](#project-structure)
-- [Prerequisites](#prerequisites)
-- [Getting Started](#getting-started)
-- [API Documentation](#api-documentation)
-- [API Examples](#api-examples)
-- [Testing](#testing)
-- [Evaluation](#evaluation)
-- [Security Considerations](#security-considerations)
-- [Limitations and Future Improvements](#limitations-and-future-improvements)
-- [Project Status](#project-status)
-
-## Overview
-
-Enterprise AI RAG Platform is a document question-answering application built with FastAPI and PostgreSQL.
-
-It combines retrieval-augmented generation with structured database queries. User questions are processed by an orchestrator that checks for potential prompt injection and routes questions to the appropriate component.
-
-The RAG pipeline retrieves relevant document content, reranks candidate results, constructs context, and uses a local language model to generate a response. Structured questions, such as document counts and file listings, can be handled through the SQL agent.
+An enterprise-oriented Retrieval-Augmented Generation (RAG) platform built with Python, FastAPI, PostgreSQL, and pgvector. It ingests PDF documents, retrieves relevant information, reranks results, and generates answers grounded in retrieved context with source citations.
 
 ## Architecture
 
-For the detailed system architecture, ingestion workflow, data layer, and technology decisions, see [Detailed RAG Architecture](architecture/rag_architecture.md).
-
 ```mermaid
 flowchart TD
-    A[User Question] --> B[FastAPI Application]
-    B --> C[Security Checks]
-    C --> D[Query Orchestrator]
-    D -->|Document Question| E[Hybrid Retrieval]
-    D -->|Structured Query| F[SQL Agent]
-    E --> G[Vector Search and Keyword Search]
-    G --> H[Cross-Encoder Reranking]
-    H --> I[Relevance Check]
-    I --> J[Context Construction]
-    J --> K[Local Language Model]
-    K --> L[Answer and Source Information]
-    F --> M[PostgreSQL]
-    M --> N[Structured Result]
+    A[User] --> B[FastAPI Application]
+    B --> C[Query Router]
+    C --> D[Prompt Injection Detection]
+    D --> E[Hybrid Retrieval]
+    E --> F[PostgreSQL + pgvector]
+    E --> G[Cross-Encoder Reranker]
+    G --> H[Local Language Model]
+    H --> I[Answer with Source Citations]
+    J[PDF Upload] --> K[Document Processing]
+    K --> L[Text Chunking]
+    L --> M[Embedding Generation]
+    M --> F
 ```
 
-### Document ingestion
-
-The document ingestion workflow accepts PDF files and optional metadata. The ingestion service processes the file and prepares its content for retrieval.
-
-The retrieval workflow uses:
-
-1. Vector-based semantic retrieval.
-2. Keyword-based retrieval.
-3. Candidate reranking.
-4. Relevance checks.
-5. Context construction for answer generation.
-6. Source information returned with the answer.
-
-### Structured question answering
-
-The orchestrator can route structured questions to a SQL agent that queries PostgreSQL. This supports questions such as document counts and file listings, depending on the implemented query tools.
-
-### Security checks
-
-The orchestrator checks incoming questions for potential prompt injection before routing them to the RAG or SQL components.
+For detailed system architecture and technology decisions, see [Detailed RAG Architecture](architecture/rag_architecture.md).
 
 ## Key Features
 
-- Document-grounded question answering.
-- Hybrid vector and keyword retrieval.
-- Reranking of retrieved candidates.
-- Metadata filtering by department and document type.
-- Source information in RAG responses.
-- SQL-based document queries.
-- PDF upload and ingestion.
-- Prompt-injection detection.
-- FastAPI endpoints with interactive documentation.
-- Automated API tests using pytest.
-- Custom evaluation script with routing, keyword, citation, retrieval, security, and latency checks.
-- Docker-based API setup.
+- PDF document ingestion and text chunking
+- Embedding generation with Sentence Transformers
+- PostgreSQL storage with pgvector
+- Hybrid retrieval and Cross-Encoder reranking
+- Local language model integration
+- Answers with source citations
+- Department and document-type metadata filtering
+- SQL Agent for supported database questions
+- Query routing and prompt injection detection
+- Evaluation harness and automated tests
+- FastAPI endpoints and Docker-based API deployment
 
 ## Technology Stack
 
 | Component | Technology |
 |---|---|
-| Programming language | Python |
-| API framework | FastAPI |
+| Language | Python |
+| API | FastAPI |
 | Database | PostgreSQL |
 | Vector search | pgvector |
-| Language models | Hugging Face Transformers |
-| Embeddings | Sentence Transformers-compatible embedding models |
-| Reranking | Cross-encoder reranker |
+| Embeddings | Sentence Transformers |
+| Reranking | Cross-Encoder |
+| Language model | FLAN-T5 Small |
+| Database access | SQLAlchemy and Psycopg |
 | Containerization | Docker |
-| Testing | pytest |
-| Evaluation | Custom Python evaluation harness |
-| Version control | Git and GitHub |
+| Testing | Pytest |
 
 ## Project Structure
 
 ```text
 enterprise-ai-rag-platform/
 ├── app/
-│   ├── main.py
-│   ├── database.py
-│   ├── ingestion_service.py
-│   ├── rag_service.py
-│   ├── orchestrator.py
-│   └── ...
 ├── architecture/
+│   └── rag_architecture.md
 ├── data/
 ├── evaluation/
-│   ├── test_cases.json
 │   └── evaluation_results.json
 ├── notebooks/
 ├── scripts/
 │   └── run_evaluation.py
 ├── tests/
-│   └── test_api.py
 ├── .env.example
 ├── .gitignore
-├── Dockerfile
 ├── docker-compose.yml
+├── Dockerfile
 ├── requirements.txt
 └── README.md
 ```
 
-The tree above highlights the main project areas. Additional modules may exist within the application directories.
-
 ## Prerequisites
 
-Install the following before running the project:
+- Python compatible with the project dependencies
+- Git
+- Docker Desktop
+- PostgreSQL with the pgvector extension
+- A configured database and valid credentials
 
-- Python compatible with the project's dependencies.
-- Docker Desktop.
-- Git.
-- A local PostgreSQL database with the required pgvector extension.
-- The project dependencies listed in `requirements.txt`.
+**Important:** Docker Compose starts the API service only. PostgreSQL runs separately and must already be available on port `5432`.
 
 ## Getting Started
 
 ### 1. Clone the repository
 
-```bash
+```powershell
 git clone https://github.com/poojapandit1109-boop/enterprise-ai-rag-platform.git
 cd enterprise-ai-rag-platform
 ```
 
-### 2. Create and activate a virtual environment
+If you have already cloned the repository, open PowerShell in the project directory instead.
 
-On Windows PowerShell:
+### 2. Create a virtual environment
 
 ```powershell
 python -m venv venv
+```
+
+Activate it in PowerShell:
+
+```powershell
 .\venv\Scripts\Activate.ps1
 ```
 
-If PowerShell blocks script activation, use the virtual environment's Python executable directly:
+If script activation is blocked, use the virtual environment's Python executable directly:
 
 ```powershell
 venv\Scripts\python.exe --version
@@ -175,41 +120,42 @@ venv\Scripts\python.exe -m pip install -r requirements.txt
 
 ### 4. Configure environment variables
 
-Create your local `.env` file from the example:
+Create your local environment file:
 
 ```powershell
 Copy-Item .env.example .env
 ```
 
-Update the local configuration using the settings required by your environment. For local Windows execution, the database URL should use `localhost` if PostgreSQL is published on your computer's port 5432.
-
-Example format:
+Configure the `DATABASE_URL` in `.env` for your environment. Example format:
 
 ```text
 APP_NAME=Enterprise AI RAG Platform
 ENVIRONMENT=development
+LLM_API_KEY=
 DATABASE_URL=postgresql+psycopg://ai_user:YOUR_PASSWORD@localhost:5432/enterprise_ai
 ```
 
-Replace the example username, password, database, and other values with your actual local configuration. Do not commit `.env` or real credentials to GitHub.
+Replace the example password and database details with your actual configuration. URL-encode special characters in passwords when necessary.
 
-The example environment file includes `LLM_API_KEY`, but the current local language model configuration may not require a hosted model API key.
+**Never commit `.env` or real credentials to GitHub.** Keep `.env.example` limited to safe placeholders. The local language model may not require a hosted API key.
 
 ### 5. Start the services
 
-If Docker Desktop is running and the existing Compose configuration is correct for your environment:
+Ensure Docker Desktop is running and PostgreSQL with pgvector is available.
 
-```powershell
-docker compose up -d
-```
-
-Check the running containers:
+Check running containers:
 
 ```powershell
 docker ps
 ```
 
-Ensure PostgreSQL is available and that the API's database configuration is correct before testing database-backed endpoints.
+Start the API service when needed:
+
+```powershell
+docker compose up -d
+```
+
+The Compose configuration starts the API only; it does not create or manage the PostgreSQL container.
 
 ### 6. Check API health
 
@@ -227,166 +173,92 @@ Expected response:
 
 ## API Documentation
 
-When the API is running locally, open:
+When the API is running:
 
 - Swagger UI: http://localhost:8000/docs
 - ReDoc: http://localhost:8000/redoc
 
-These interfaces let you inspect the endpoint schemas and submit test requests.
+## API Endpoints
 
-## API Examples
-
-### Health check
-
-**Endpoint:** `GET /health`
-
-```powershell
-curl.exe http://localhost:8000/health
-```
-
-Example response:
-
-```json
-{
-  "status": "healthy"
-}
-```
+| Method | Endpoint | Purpose |
+|---|---|---|
+| GET | `/` | Welcome endpoint |
+| GET | `/health` | Health check |
+| POST | `/ask` | Ask a question against the knowledge base |
+| POST | `/documents/upload` | Upload a document |
 
 ### Ask a question
 
-**Endpoint:** `POST /ask`
-
-Example request:
+Example using PowerShell:
 
 ```powershell
-curl.exe -X POST "http://localhost:8000/ask" `
-  -H "Content-Type: application/json" `
-  -d "{\"question\":\"What security measures should enterprise AI systems use?\",\"top_k\":3}"
+$body = @{
+    question = "What does the architecture document explain?"
+    top_k = 3
+} | ConvertTo-Json
+
+Invoke-RestMethod -Uri "http://localhost:8000/ask" -Method Post -ContentType "application/json" -Body $body
 ```
-
-The request accepts the following fields:
-
-| Field | Type | Default | Description |
-|---|---|---|---|
-| `question` | string | Required | Question to process |
-| `top_k` | integer | `3` | Number of retrieval candidates requested |
-| `department` | string or null | `null` | Optional department filter |
-| `document_type` | string or null | `null` | Optional document type filter |
-
-The exact response depends on the selected route and the orchestrator result. Consult the live API documentation for the response schema.
 
 ### Upload a PDF
 
-**Endpoint:** `POST /documents/upload`
-
-The endpoint accepts a file and optional `title`, `department`, and `document_type` metadata.
-
-Example PowerShell request:
+Replace the example file path with a real PDF path:
 
 ```powershell
-curl.exe -X POST "http://localhost:8000/documents/upload?title=Architecture%20Guide&department=Engineering&document_type=Architecture" -F "file=@C:\path\to\your-document.pdf"
+curl.exe -X POST "http://localhost:8000/documents/upload" -F "file=@C:\path\to\document.pdf" -F "title=Architecture Guide" -F "department=Engineering" -F "document_type=Architecture"
 ```
-
-Replace `C:\path\to\your-document.pdf` with the full path to a PDF on your computer.
-
-Upload only files you are authorized to process. Authentication and authorization should be added before exposing upload endpoints to untrusted users.
 
 ## Testing
 
-Run the API test suite from the project root.
-
-First, configure the database URL in the current PowerShell session for your local PostgreSQL instance:
+Run the tests from the repository root:
 
 ```powershell
-$env:DATABASE_URL = "postgresql+psycopg://ai_user:YOUR_PASSWORD@localhost:5432/enterprise_ai"
+venv\Scripts\python.exe -m pytest -q
 ```
 
-Replace `YOUR_PASSWORD` with your local development password. Do not share or commit it.
-
-Run the tests:
-
-```powershell
-venv\Scripts\python.exe -m pytest -v
-```
-
-The current API test suite has passed **7 of 7 tests** in the development environment.
-
-Tests cover the home endpoint, health endpoint, SQL document queries, RAG metadata filtering, unknown questions, and prompt-injection blocking.
-
-Results may differ when the environment, database contents, or model dependencies change.
+Ensure the required database is available if your tests use database-backed endpoints.
 
 ## Evaluation
 
-Run the evaluation harness from the project root:
+Run the evaluation script:
 
 ```powershell
-venv\Scripts\python.exe -m scripts.run_evaluation
+venv\Scripts\python.exe scripts\run_evaluation.py
 ```
 
-The current configured evaluation suite contains six cases:
+Results are saved under `evaluation/`.
 
-1. Enterprise AI security questions.
-2. RAG concepts.
-3. Document counts.
-4. File listing.
-5. Questions whose answers are unavailable.
-6. Prompt-injection attempts.
-
-### Latest recorded results
-
-| Metric | Result |
-|---|---:|
-| Evaluation cases passed | 6 / 6 |
-| Configured evaluation pass rate | 100% |
-| Route accuracy | 100% |
-| Average latency in the recorded run | 0.666 seconds |
-| Maximum latency in the recorded run | 2.064 seconds |
-
-These figures describe one recorded run of the current six-case evaluation suite. They are not a guarantee of general answer quality or production performance. Citation and source metrics should be interpreted according to the cases to which those checks apply.
-
-The generated evaluation report is saved to:
-
-```text
-evaluation/evaluation_results.json
-```
+The configured development evaluation set previously passed 6 of 6 cases. This is a small test set, not a guarantee of production performance.
 
 ## Security Considerations
 
-The project includes a prompt-injection detection step and basic checks before routing questions to the RAG or SQL components.
+- Keep credentials in `.env` and out of version control.
+- Treat uploaded documents and retrieved text as untrusted input.
+- Add authentication and authorization before exposing enterprise documents.
+- Treat prompt injection detection as one layer of defense, not a complete security solution.
+- Add rate limiting, monitoring, and secure deployment configuration before production use.
 
-Before production deployment, additional safeguards are needed:
+## Current Limitations
 
-- Authentication and role-based authorization.
-- Strict database permissions and parameterized query handling.
-- File type and file size validation for uploads.
-- Protection against unsafe file names and file overwrites.
-- Secrets management through environment variables or a dedicated secrets manager.
-- Rate limiting and request validation.
-- Monitoring, audit logging, and security testing.
-- Evaluation against a larger range of prompt-injection and retrieval attacks.
+- Evaluation coverage is limited.
+- Retrieval quality depends on document quality, chunking, embeddings, and query formulation.
+- Local model performance depends on available hardware.
+- PostgreSQL must be configured and running separately.
+- Production deployment requires additional security, observability, scaling, and reliability work.
 
-Do not use this development configuration to process confidential documents in a publicly exposed environment without appropriate security controls.
+## Future Improvements
 
-## Limitations and Future Improvements
-
-- Expand the evaluation dataset with realistic and difficult questions.
-- Measure retrieval relevance and answer faithfulness.
-- Validate citation correctness against source passages.
-- Add authentication and authorization for multi-user deployments.
-- Improve observability and production deployment configuration.
-- Test with a larger and more diverse document collection.
-- Add automated continuous integration.
-- Establish repeatable performance benchmarks.
-- Improve file upload validation and error handling.
+- Expand evaluation datasets and retrieval metrics.
+- Add authentication and role-based access control.
+- Improve document parsing and chunking.
+- Add tracing and performance monitoring.
+- Add continuous integration and automated deployment.
+- Evaluate alternative embedding and language models.
 
 ## Project Status
 
-This is a portfolio and learning project demonstrating RAG architecture, hybrid retrieval, reranking, local language-model integration, database-backed query routing, evaluation, and basic security checks.
-
-The API tests and configured evaluation cases have passed in the current development environment. The platform is not yet production-ready and requires additional security, reliability, evaluation, and operational work before deployment in a real enterprise environment.
+This is a portfolio and development project demonstrating an end-to-end RAG workflow. Re-run tests and evaluations before making performance claims.
 
 ## Author
 
-GitHub: [poojapandit1109-boop](https://github.com/poojapandit1109-boop)
-
-Repository: [Enterprise AI RAG Platform](https://github.com/poojapandit1109-boop/enterprise-ai-rag-platform)
+**GitHub:** [poojapandit1109-boop](https://github.com/poojapandit1109-boop)
