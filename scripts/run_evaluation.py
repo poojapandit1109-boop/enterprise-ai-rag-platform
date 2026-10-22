@@ -25,6 +25,12 @@ def check_keywords(answer: str, expected_keywords: list[str]) -> bool:
     )
 
 
+def check_status(applicable: bool, passed: bool) -> str:
+    if not applicable:
+        return "NOT APPLICABLE"
+    return "PASS" if passed else "FAIL"
+
+
 def evaluate_test_case(index: int, test_case: dict) -> dict:
     question = test_case["question"]
     expected_keywords = test_case["expected_keywords"]
@@ -48,51 +54,36 @@ def evaluate_test_case(index: int, test_case: dict) -> dict:
     keyword_pass = check_keywords(answer, expected_keywords)
     route_pass = actual_route == expected_route
 
-    # Measure citation presence separately from retrieval.
-    citation_present = "[source" in answer_lower
-
-    # Sources should be available for a RAG answer that claims
-    # it found supporting information in documents.
     not_found = "not found" in answer_lower
+    citation_present = "[source" in answer_lower
     source_available = len(sources) > 0
 
-    citation_applicable = (
-        actual_route == "rag"
-        and not not_found
-    )
-    citation_pass = (
-        not citation_applicable
-        or citation_present
+    # Citation and retrieval checks apply to supported RAG answers.
+    rag_answer_applicable = (
+        actual_route == "rag" and not not_found
     )
 
-    retrieval_applicable = (
-        actual_route == "rag"
-        and not not_found
+    citation_pass = (
+        not rag_answer_applicable or citation_present
     )
     retrieval_pass = (
-        not retrieval_applicable
-        or source_available
+        not rag_answer_applicable or source_available
     )
 
-    # A blocked test must actually be routed to the blocked path.
+    # Security check applies to tests intended to be blocked.
+    security_applicable = expected_route == "blocked"
     security_pass = (
-        expected_route != "blocked"
-        or actual_route == "blocked"
+        not security_applicable or actual_route == "blocked"
     )
 
-    # For the unsupported-question case, check both the expected
-    # route and the expected refusal wording.
-    unsupported_expected = test_case.get(
-        "expect_unsupported", False
-    )
+    # Unsupported handling applies only to explicitly marked tests.
+    unsupported_expected = test_case.get("expect_unsupported", False)
     unsupported_pass = (
-        not unsupported_expected
-        or (
-            actual_route == "rag"
-            and not_found
-            and not source_available
-        )
+        actual_route == "rag"
+        and not_found
+        and not source_available
     )
+    unsupported_applicable = unsupported_expected
 
     checks = {
         "keyword_check": keyword_pass,
@@ -103,26 +94,60 @@ def evaluate_test_case(index: int, test_case: dict) -> dict:
         "unsupported_question_check": unsupported_pass,
     }
 
-    test_pass = all(checks.values())
+    applicability = {
+        "keyword_check": True,
+        "route_check": True,
+        "citation_check": rag_answer_applicable,
+        "retrieval_check": rag_answer_applicable,
+        "security_check": security_applicable,
+        "unsupported_question_check": unsupported_applicable,
+    }
+
+    check_statuses = {
+        name: check_status(applicability[name], checks[name])
+        for name in checks
+    }
+
+    applicable_checks_passed = all(
+        checks[name]
+        for name in checks
+        if applicability[name]
+    )
 
     return {
         "test_case": index,
         "question": question,
         "expected_route": expected_route,
         "actual_route": actual_route,
-        **checks,
+        "checks": check_statuses,
+        "keyword_check": keyword_pass,
+        "route_check": route_pass,
+        "citation_check": check_statuses["citation_check"],
+        "retrieval_check": check_statuses["retrieval_check"],
+        "security_check": check_statuses["security_check"],
+        "unsupported_question_check": check_statuses[
+            "unsupported_question_check"
+        ],
         "citation_present": citation_present,
-        "citation_applicable": citation_applicable,
+        "citation_applicable": rag_answer_applicable,
         "source_available": source_available,
         "source_count": len(sources),
         "unsupported_expected": unsupported_expected,
         "unsupported_detected": not_found,
-        "passed": test_pass,
+        "passed": applicable_checks_passed,
         "latency_seconds": round(latency, 3),
         "failure_reasons": [
-            name for name, passed in checks.items() if not passed
+            name
+            for name in checks
+            if applicability[name] and not checks[name]
         ],
     }
+
+
+def percentage(numerator: int, denominator: int):
+    if denominator == 0:
+        return None
+    return round(numerator / denominator * 100, 2)
 
 
 def run_evaluation():
@@ -134,59 +159,73 @@ def run_evaluation():
         results.append(result)
 
         status = "PASS" if result["passed"] else "FAIL"
-        print(f"[{status}] Test {index}: {result['question']}")
+        print(f"\n[{status}] Test {index}: {result['question']}")
         print(
             f"  Route: {result['actual_route']} "
             f"(expected: {result['expected_route']})"
         )
-        print(
-            f"  Keywords: {result['keyword_check']} | "
-            f"Citation: {result['citation_present']} | "
-            f"Sources: {result['source_count']} | "
-            f"Security: {result['security_check']} | "
-            f"Unsupported handling: "
-            f"{result['unsupported_question_check']}"
-        )
+
+        for name, check in result["checks"].items():
+            print(f"  {name}: {check}")
+
+        print(f"  Sources: {result['source_count']}")
         print(f"  Latency: {result['latency_seconds']} seconds")
 
         if result["failure_reasons"]:
-            print(
-                "  Failed checks: "
-                + ", ".join(result["failure_reasons"])
-            )
+            print("  Failed checks: " + ", ".join(
+                result["failure_reasons"]
+            ))
 
     total = len(results)
     passed = sum(result["passed"] for result in results)
+    failed = total - passed
     latencies = [result["latency_seconds"] for result in results]
 
-    route_correct = sum(result["route_check"] for result in results)
-    citation_applicable_results = [
+    citation_results = [
         result for result in results if result["citation_applicable"]
     ]
-    retrieval_applicable_results = [
-        result for result in results if result["unsupported_expected"] is False
-        and result["actual_route"] == "rag"
-        and not result["unsupported_detected"]
+    retrieval_results = [
+        result for result in results if result["citation_applicable"]
+    ]
+    unsupported_results = [
+        result for result in results if result["unsupported_expected"]
+    ]
+    security_results = [
+        result for result in results
+        if result["expected_route"] == "blocked"
     ]
 
     summary = {
         "total_tests": total,
         "passed_tests": passed,
-        "failed_tests": total - passed,
-        "score_percent": round(passed / total * 100, 2) if total else 0,
-        "route_accuracy_percent": round(
-            route_correct / total * 100, 2
-        ) if total else 0,
-        "citation_presence_percent": round(
-            sum(r["citation_present"] for r in citation_applicable_results)
-            / len(citation_applicable_results) * 100, 2
-        ) if citation_applicable_results else None,
-        "source_availability_percent": round(
-            sum(r["source_available"] for r in retrieval_applicable_results)
-            / len(retrieval_applicable_results) * 100, 2
-        ) if retrieval_applicable_results else None,
-        "average_latency_seconds": round(mean(latencies), 3) if latencies else 0,
-        "max_latency_seconds": round(max(latencies), 3) if latencies else 0,
+        "failed_tests": failed,
+        "score_percent": percentage(passed, total),
+        "route_accuracy_percent": percentage(
+            sum(result["route_check"] for result in results),
+            total,
+        ),
+        "citation_presence_percent": percentage(
+            sum(result["citation_present"] for result in citation_results),
+            len(citation_results),
+        ),
+        "source_availability_percent": percentage(
+            sum(result["source_available"] for result in retrieval_results),
+            len(retrieval_results),
+        ),
+        "security_pass_percent": percentage(
+            sum(result["security_check"] == "PASS"
+                for result in security_results),
+            len(security_results),
+        ),
+        "unsupported_handling_pass_percent": percentage(
+            sum(result["unsupported_question_check"] == "PASS"
+                for result in unsupported_results),
+            len(unsupported_results),
+        ),
+        "average_latency_seconds": round(mean(latencies), 3)
+        if latencies else 0,
+        "max_latency_seconds": round(max(latencies), 3)
+        if latencies else 0,
         "results": results,
     }
 
@@ -196,25 +235,18 @@ def run_evaluation():
     print("\n========== EVALUATION SUMMARY ==========")
     print(f"Total tests: {total}")
     print(f"Passed: {passed}")
-    print(f"Failed: {total - passed}")
-    print(f"Score: {summary['score_percent']:.2f}%")
-    print(f"Route accuracy: {summary['route_accuracy_percent']:.2f}%")
+    print(f"Failed: {failed}")
+    print(f"Overall pass rate: {summary['score_percent']}%")
+    print(f"Route accuracy: {summary['route_accuracy_percent']}%")
+    print(f"Citation presence: {summary['citation_presence_percent']}%")
+    print(f"Source availability: {summary['source_availability_percent']}%")
+    print(f"Security checks passed: {summary['security_pass_percent']}%")
     print(
-        "Citation presence: "
-        f"{summary['citation_presence_percent']}"
+        "Unsupported handling passed: "
+        f"{summary['unsupported_handling_pass_percent']}%"
     )
-    print(
-        "Source availability: "
-        f"{summary['source_availability_percent']}"
-    )
-    print(
-        "Average latency: "
-        f"{summary['average_latency_seconds']} seconds"
-    )
-    print(
-        "Maximum latency: "
-        f"{summary['max_latency_seconds']} seconds"
-    )
+    print(f"Average latency: {summary['average_latency_seconds']} seconds")
+    print(f"Maximum latency: {summary['max_latency_seconds']} seconds")
     print(f"Results saved to: {RESULTS_FILE}")
 
 
