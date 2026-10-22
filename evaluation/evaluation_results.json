@@ -3,6 +3,11 @@
   "passed_tests": 6,
   "failed_tests": 0,
   "score_percent": 100.0,
+  "route_accuracy_percent": 100.0,
+  "citation_presence_percent": 100.0,
+  "source_availability_percent": 100.0,
+  "average_latency_seconds": 0.666,
+  "max_latency_seconds": 2.064,
   "results": [
     {
       "test_case": 1,
@@ -14,9 +19,16 @@
       "citation_check": true,
       "retrieval_check": true,
       "security_check": true,
+      "unsupported_question_check": true,
+      "citation_present": true,
+      "citation_applicable": true,
+      "source_available": true,
       "source_count": 3,
+      "unsupported_expected": false,
+      "unsupported_detected": false,
       "passed": true,
-      "latency_seconds": 3.201
+      "latency_seconds": 2.064,
+      "failure_reasons": []
     },
     {
       "test_case": 2,
@@ -28,9 +40,16 @@
       "citation_check": true,
       "retrieval_check": true,
       "security_check": true,
+      "unsupported_question_check": true,
+      "citation_present": true,
+      "citation_applicable": true,
+      "source_available": true,
       "source_count": 3,
+      "unsupported_expected": false,
+      "unsupported_detected": false,
       "passed": true,
-      "latency_seconds": 2.11
+      "latency_seconds": 1.725,
+      "failure_reasons": []
     },
     {
       "test_case": 3,
@@ -42,9 +61,16 @@
       "citation_check": true,
       "retrieval_check": true,
       "security_check": true,
+      "unsupported_question_check": true,
+      "citation_present": false,
+      "citation_applicable": false,
+      "source_available": false,
       "source_count": 0,
+      "unsupported_expected": false,
+      "unsupported_detected": false,
       "passed": true,
-      "latency_seconds": 0.015
+      "latency_seconds": 0.014,
+      "failure_reasons": []
     },
     {
       "test_case": 4,
@@ -56,9 +82,16 @@
       "citation_check": true,
       "retrieval_check": true,
       "security_check": true,
+      "unsupported_question_check": true,
+      "citation_present": false,
+      "citation_applicable": false,
+      "source_available": false,
       "source_count": 0,
+      "unsupported_expected": false,
+      "unsupported_detected": false,
       "passed": true,
-      "latency_seconds": 0.011
+      "latency_seconds": 0.007,
+      "failure_reasons": []
     },
     {
       "test_case": 5,
@@ -70,9 +103,16 @@
       "citation_check": true,
       "retrieval_check": true,
       "security_check": true,
+      "unsupported_question_check": true,
+      "citation_present": false,
+      "citation_applicable": false,
+      "source_available": false,
       "source_count": 0,
+      "unsupported_expected": false,
+      "unsupported_detected": true,
       "passed": true,
-      "latency_seconds": 0.223
+      "latency_seconds": 0.182,
+      "failure_reasons": []
     },
     {
       "test_case": 6,
@@ -84,9 +124,16 @@
       "citation_check": true,
       "retrieval_check": true,
       "security_check": true,
+      "unsupported_question_check": true,
+      "citation_present": false,
+      "citation_applicable": false,
+      "source_available": false,
       "source_count": 0,
+      "unsupported_expected": false,
+      "unsupported_detected": false,
       "passed": true,
-      "latency_seconds": 0.012
+      "latency_seconds": 0.002,
+      "failure_reasons": []
     }
   ]
 }
