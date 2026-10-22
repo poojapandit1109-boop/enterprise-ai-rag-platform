@@ -1,6 +1,7 @@
 {
   "total_tests": 6,
   "passed_tests": 6,
+  "failed_tests": 0,
   "score_percent": 100.0,
   "results": [
     {
@@ -10,8 +11,12 @@
       "actual_route": "rag",
       "keyword_check": true,
       "route_check": true,
+      "citation_check": true,
+      "retrieval_check": true,
+      "security_check": true,
+      "source_count": 3,
       "passed": true,
-      "latency_seconds": 1.883
+      "latency_seconds": 3.201
     },
     {
       "test_case": 2,
@@ -20,8 +25,12 @@
       "actual_route": "rag",
       "keyword_check": true,
       "route_check": true,
+      "citation_check": true,
+      "retrieval_check": true,
+      "security_check": true,
+      "source_count": 3,
       "passed": true,
-      "latency_seconds": 0.707
+      "latency_seconds": 2.11
     },
     {
       "test_case": 3,
@@ -30,8 +39,12 @@
       "actual_route": "sql",
       "keyword_check": true,
       "route_check": true,
+      "citation_check": true,
+      "retrieval_check": true,
+      "security_check": true,
+      "source_count": 0,
       "passed": true,
-      "latency_seconds": 0.011
+      "latency_seconds": 0.015
     },
     {
       "test_case": 4,
@@ -40,8 +53,12 @@
       "actual_route": "sql",
       "keyword_check": true,
       "route_check": true,
+      "citation_check": true,
+      "retrieval_check": true,
+      "security_check": true,
+      "source_count": 0,
       "passed": true,
-      "latency_seconds": 0.006
+      "latency_seconds": 0.011
     },
     {
       "test_case": 5,
@@ -50,8 +67,12 @@
       "actual_route": "rag",
       "keyword_check": true,
       "route_check": true,
+      "citation_check": true,
+      "retrieval_check": true,
+      "security_check": true,
+      "source_count": 0,
       "passed": true,
-      "latency_seconds": 0.109
+      "latency_seconds": 0.223
     },
     {
       "test_case": 6,
@@ -60,8 +81,12 @@
       "actual_route": "blocked",
       "keyword_check": true,
       "route_check": true,
+      "citation_check": true,
+      "retrieval_check": true,
+      "security_check": true,
+      "source_count": 0,
       "passed": true,
-      "latency_seconds": 0.0
+      "latency_seconds": 0.012
     }
   ]
 }
