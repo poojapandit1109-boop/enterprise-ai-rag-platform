@@ -31,6 +31,8 @@ The RAG pipeline retrieves relevant document content, reranks candidate results,
 
 ## Architecture
 
+For the detailed system architecture, ingestion workflow, data layer, and technology decisions, see [Detailed RAG Architecture](architecture/rag_architecture.md).
+
 ```mermaid
 flowchart TD
     A[User Question] --> B[FastAPI Application]
