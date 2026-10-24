@@ -1,4 +1,4 @@
-﻿# Enterprise AI RAG Platform
+# Enterprise AI RAG Platform
 
 An enterprise-oriented Retrieval-Augmented Generation (RAG) platform built with Python, FastAPI, PostgreSQL, and pgvector. It ingests PDF documents, retrieves relevant information, reranks results, and generates answers grounded in retrieved context with source citations.
 
@@ -291,4 +291,3 @@ venv\Scripts\python.exe -m pytest -v tests\test_api.py
 ```
 
 Ensure PostgreSQL is running and the test process has a valid `DATABASE_URL`. When running tests directly on Windows, use `localhost` for a locally published database port; `host.docker.internal` is intended for connectivity from the Docker container.
-
