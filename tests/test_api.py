@@ -149,3 +149,47 @@ def test_prompt_injection_blocked():
     assert data["route"] == "blocked"
 
     assert data["result"]["status"] == "blocked"
+    
+def test_upload_rejects_non_pdf_file():
+    response = client.post(
+        "/documents/upload",
+        files={"file": ("notes.txt", b"Not a PDF.", "text/plain")},
+    )
+    assert response.status_code == 415
+
+
+def test_upload_rejects_empty_file():
+    response = client.post(
+        "/documents/upload",
+        files={"file": ("empty.pdf", b"", "application/pdf")},
+    )
+    assert response.status_code == 400
+
+
+def test_upload_rejects_invalid_pdf_signature():
+    response = client.post(
+        "/documents/upload",
+        files={
+            "file": (
+                "invalid.pdf",
+                b"This is not a real PDF file.",
+                "application/pdf",
+            )
+        },
+    )
+    assert response.status_code == 415
+
+
+def test_upload_rejects_file_over_10_mb():
+    oversized_content = b"%PDF-" + b"A" * (10 * 1024 * 1024)
+    response = client.post(
+        "/documents/upload",
+        files={
+            "file": (
+                "oversized.pdf",
+                oversized_content,
+                "application/pdf",
+            )
+        },
+    )
+    assert response.status_code == 413

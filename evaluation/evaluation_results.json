@@ -10,8 +10,8 @@
   "source_availability_percent": 100.0,
   "security_pass_percent": 100.0,
   "unsupported_handling_pass_percent": 100.0,
-  "average_latency_seconds": 0.169,
-  "max_latency_seconds": 1.141,
+  "average_latency_seconds": 0.229,
+  "max_latency_seconds": 1.12,
   "results": [
     {
       "test_case": 1,
@@ -50,7 +50,7 @@
       "unsupported_expected": false,
       "unsupported_detected": false,
       "passed": true,
-      "latency_seconds": 1.141,
+      "latency_seconds": 1.12,
       "failure_reasons": []
     },
     {
@@ -90,7 +90,7 @@
       "unsupported_expected": false,
       "unsupported_detected": false,
       "passed": true,
-      "latency_seconds": 0.126,
+      "latency_seconds": 0.355,
       "failure_reasons": []
     },
     {
@@ -126,7 +126,7 @@
       "unsupported_expected": false,
       "unsupported_detected": false,
       "passed": true,
-      "latency_seconds": 0.013,
+      "latency_seconds": 0.018,
       "failure_reasons": []
     },
     {
@@ -162,7 +162,7 @@
       "unsupported_expected": false,
       "unsupported_detected": false,
       "passed": true,
-      "latency_seconds": 0.005,
+      "latency_seconds": 0.008,
       "failure_reasons": []
     },
     {
@@ -198,7 +198,7 @@
       "unsupported_expected": true,
       "unsupported_detected": true,
       "passed": true,
-      "latency_seconds": 0.138,
+      "latency_seconds": 0.249,
       "failure_reasons": []
     },
     {
@@ -274,7 +274,7 @@
       "unsupported_expected": false,
       "unsupported_detected": false,
       "passed": true,
-      "latency_seconds": 0.138,
+      "latency_seconds": 0.21,
       "failure_reasons": []
     },
     {
@@ -314,7 +314,7 @@
       "unsupported_expected": false,
       "unsupported_detected": false,
       "passed": true,
-      "latency_seconds": 0.13,
+      "latency_seconds": 0.237,
       "failure_reasons": []
     },
     {
@@ -354,7 +354,7 @@
       "unsupported_expected": false,
       "unsupported_detected": false,
       "passed": true,
-      "latency_seconds": 0.168,
+      "latency_seconds": 0.285,
       "failure_reasons": []
     },
     {
@@ -390,7 +390,7 @@
       "unsupported_expected": false,
       "unsupported_detected": false,
       "passed": true,
-      "latency_seconds": 0.008,
+      "latency_seconds": 0.011,
       "failure_reasons": []
     },
     {
@@ -462,7 +462,7 @@
       "unsupported_expected": true,
       "unsupported_detected": true,
       "passed": true,
-      "latency_seconds": 0.156,
+      "latency_seconds": 0.253,
       "failure_reasons": []
     }
   ]
