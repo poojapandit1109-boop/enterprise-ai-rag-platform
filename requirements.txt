@@ -17,8 +17,7 @@ typing-inspection==0.4.4
 typing_extensions==4.16.0
 tzdata==2026.4
 uvicorn==0.53.0
-sentence-transformers
-pypdf
-pgvector
-
+sentence-transformers==6.2.0
+pypdf==6.21.2
+pgvector==0.5.1
 python-multipart==0.0.32
