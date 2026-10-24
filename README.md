@@ -262,3 +262,33 @@ This is a portfolio and development project demonstrating an end-to-end RAG work
 ## Author
 
 **GitHub:** [poojapandit1109-boop](https://github.com/poojapandit1109-boop)
+
+## RAG Evaluation
+
+Run the evaluation harness from the repository root. It evaluates query routing, answer keywords, source citations, source validity, security handling, unsupported queries, and response latency.
+
+For a Windows PowerShell session using a local PostgreSQL instance on port 5432:
+
+```powershell
+$env:DATABASE_URL = "postgresql+psycopg://ai_user:YOUR_PASSWORD@localhost:5432/enterprise_ai"
+$env:PYTHONPATH = (Get-Location).Path
+
+venv\Scripts\python.exe -m scripts.run_evaluation
+```
+
+Replace `YOUR_PASSWORD` with the password configured for your local database. Use the same database credentials as your application configuration.
+
+The evaluation report is written to `evaluation/evaluation_results.json`. Running the evaluation again updates that report, so review the results before committing changes.
+
+The current committed evaluation report contains 12 test cases, all passing. Results can vary when documents, models, dependencies, or evaluation cases change.
+
+## API Tests
+
+Run the API test suite from the repository root:
+
+```powershell
+venv\Scripts\python.exe -m pytest -v tests\test_api.py
+```
+
+Ensure PostgreSQL is running and the test process has a valid `DATABASE_URL`. When running tests directly on Windows, use `localhost` for a locally published database port; `host.docker.internal` is intended for connectivity from the Docker container.
+
