@@ -1,4 +1,4 @@
-# Enterprise AI RAG Platform
+﻿# Enterprise AI RAG Platform
 
 An enterprise-oriented Retrieval-Augmented Generation (RAG) platform built with Python, FastAPI, PostgreSQL, and pgvector. It ingests PDF documents, retrieves relevant information, reranks results, and generates answers grounded in retrieved context with source citations.
 
@@ -56,6 +56,21 @@ For detailed system architecture and technology decisions, see [Detailed RAG Arc
 ```text
 enterprise-ai-rag-platform/
 ├── app/
+│   ├── chunker.py
+│   ├── context_builder.py
+│   ├── database.py
+│   ├── hybrid_search.py
+│   ├── ingestion_service.py
+│   ├── keyword_search.py
+│   ├── main.py
+│   ├── orchestrator.py
+│   ├── pdf_loader.py
+│   ├── query_router.py
+│   ├── rag_service.py
+│   ├── reranker.py
+│   ├── security.py
+│   ├── sql_agent.py
+│   └── vector_search.py
 ├── architecture/
 │   └── rag_architecture.md
 ├── data/
@@ -63,10 +78,13 @@ enterprise-ai-rag-platform/
 │   └── evaluation_results.json
 ├── notebooks/
 ├── scripts/
-│   └── run_evaluation.py
+│   ├── run_evaluation.py
+│   └── run_tests_windows.py
 ├── tests/
+│   └── test_api.py
 ├── .env.example
 ├── .gitignore
+├── api-openapi.json
 ├── docker-compose.yml
 ├── Dockerfile
 ├── requirements.txt
@@ -126,7 +144,7 @@ Create your local environment file:
 Copy-Item .env.example .env
 ```
 
-Configure the `DATABASE_URL` in `.env` for your environment. Example format:
+Configure `DATABASE_URL` in `.env` for your environment. Example format:
 
 ```text
 APP_NAME=Enterprise AI RAG Platform
@@ -177,6 +195,7 @@ When the API is running:
 
 - Swagger UI: http://localhost:8000/docs
 - ReDoc: http://localhost:8000/redoc
+- OpenAPI specification: [`api-openapi.json`](api-openapi.json)
 
 ## API Endpoints
 
@@ -210,25 +229,41 @@ curl.exe -X POST "http://localhost:8000/documents/upload" -F "file=@C:\path\to\d
 
 ## Testing
 
-Run the tests from the repository root:
+### Run the API tests on Windows
+
+The project includes a helper that reads `DATABASE_URL` from `.env` and uses `localhost` for the Windows test process. It does not modify `.env`.
+
+Run from the repository root:
+
+```powershell
+venv\Scripts\python.exe scripts\run_tests_windows.py
+```
+
+The API test suite has previously completed with **11 passed, 0 failed**. Two deprecation warnings were reported by Starlette/AnyIO; these did not cause test failures.
+
+### Run tests directly
 
 ```powershell
 venv\Scripts\python.exe -m pytest -q
 ```
 
-Ensure the required database is available if your tests use database-backed endpoints.
+Ensure PostgreSQL is running and the test process has a valid `DATABASE_URL`. Tests outside the Windows helper may need the database host configured for the environment where Python is running.
 
 ## Evaluation
 
-Run the evaluation script:
+Run the evaluation script from the repository root:
 
 ```powershell
 venv\Scripts\python.exe scripts\run_evaluation.py
 ```
 
-Results are saved under `evaluation/`.
+The evaluation report is saved under `evaluation/evaluation_results.json`. Running the evaluation again updates that report, so review the results before committing changes.
 
-The configured development evaluation set previously passed 6 of 6 cases. This is a small test set, not a guarantee of production performance.
+The current committed evaluation report records **12 of 12 configured test cases passing (100%)**, with zero failed cases. The configured checks cover query routing, citation presence and validity, cited-source content, source availability, security handling, unsupported-question handling, and response latency.
+
+The report records an average latency of `0.229` seconds and a maximum latency of `1.12` seconds for that evaluation run. These measurements are specific to the tested environment and cases.
+
+This is a small development evaluation set. It does not guarantee production performance, answer quality, or security.
 
 ## Security Considerations
 
@@ -262,32 +297,3 @@ This is a portfolio and development project demonstrating an end-to-end RAG work
 ## Author
 
 **GitHub:** [poojapandit1109-boop](https://github.com/poojapandit1109-boop)
-
-## RAG Evaluation
-
-Run the evaluation harness from the repository root. It evaluates query routing, answer keywords, source citations, source validity, security handling, unsupported queries, and response latency.
-
-For a Windows PowerShell session using a local PostgreSQL instance on port 5432:
-
-```powershell
-$env:DATABASE_URL = "postgresql+psycopg://ai_user:YOUR_PASSWORD@localhost:5432/enterprise_ai"
-$env:PYTHONPATH = (Get-Location).Path
-
-venv\Scripts\python.exe -m scripts.run_evaluation
-```
-
-Replace `YOUR_PASSWORD` with the password configured for your local database. Use the same database credentials as your application configuration.
-
-The evaluation report is written to `evaluation/evaluation_results.json`. Running the evaluation again updates that report, so review the results before committing changes.
-
-The current committed evaluation report contains 12 test cases, all passing. Results can vary when documents, models, dependencies, or evaluation cases change.
-
-## API Tests
-
-Run the API test suite from the repository root:
-
-```powershell
-venv\Scripts\python.exe -m pytest -v tests\test_api.py
-```
-
-Ensure PostgreSQL is running and the test process has a valid `DATABASE_URL`. When running tests directly on Windows, use `localhost` for a locally published database port; `host.docker.internal` is intended for connectivity from the Docker container.
