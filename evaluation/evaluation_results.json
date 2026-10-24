@@ -10,8 +10,8 @@
   "source_availability_percent": 100.0,
   "security_pass_percent": 100.0,
   "unsupported_handling_pass_percent": 100.0,
-  "average_latency_seconds": 0.187,
-  "max_latency_seconds": 1.067,
+  "average_latency_seconds": 0.083,
+  "max_latency_seconds": 0.362,
   "results": [
     {
       "test_case": 1,
@@ -50,7 +50,7 @@
       "unsupported_expected": false,
       "unsupported_detected": false,
       "passed": true,
-      "latency_seconds": 1.067,
+      "latency_seconds": 0.362,
       "failure_reasons": []
     },
     {
@@ -90,7 +90,7 @@
       "unsupported_expected": false,
       "unsupported_detected": false,
       "passed": true,
-      "latency_seconds": 0.176,
+      "latency_seconds": 0.107,
       "failure_reasons": []
     },
     {
@@ -126,7 +126,7 @@
       "unsupported_expected": false,
       "unsupported_detected": false,
       "passed": true,
-      "latency_seconds": 0.016,
+      "latency_seconds": 0.007,
       "failure_reasons": []
     },
     {
@@ -162,7 +162,7 @@
       "unsupported_expected": false,
       "unsupported_detected": false,
       "passed": true,
-      "latency_seconds": 0.01,
+      "latency_seconds": 0.004,
       "failure_reasons": []
     },
     {
@@ -198,7 +198,7 @@
       "unsupported_expected": true,
       "unsupported_detected": true,
       "passed": true,
-      "latency_seconds": 0.192,
+      "latency_seconds": 0.108,
       "failure_reasons": []
     },
     {
@@ -234,7 +234,7 @@
       "unsupported_expected": false,
       "unsupported_detected": false,
       "passed": true,
-      "latency_seconds": 0.001,
+      "latency_seconds": 0.0,
       "failure_reasons": []
     },
     {
@@ -274,7 +274,7 @@
       "unsupported_expected": false,
       "unsupported_detected": false,
       "passed": true,
-      "latency_seconds": 0.213,
+      "latency_seconds": 0.1,
       "failure_reasons": []
     },
     {
@@ -314,7 +314,7 @@
       "unsupported_expected": false,
       "unsupported_detected": false,
       "passed": true,
-      "latency_seconds": 0.188,
+      "latency_seconds": 0.103,
       "failure_reasons": []
     },
     {
@@ -354,7 +354,7 @@
       "unsupported_expected": false,
       "unsupported_detected": false,
       "passed": true,
-      "latency_seconds": 0.188,
+      "latency_seconds": 0.098,
       "failure_reasons": []
     },
     {
@@ -390,7 +390,7 @@
       "unsupported_expected": false,
       "unsupported_detected": false,
       "passed": true,
-      "latency_seconds": 0.01,
+      "latency_seconds": 0.005,
       "failure_reasons": []
     },
     {
@@ -462,7 +462,7 @@
       "unsupported_expected": true,
       "unsupported_detected": true,
       "passed": true,
-      "latency_seconds": 0.179,
+      "latency_seconds": 0.099,
       "failure_reasons": []
     }
   ]
