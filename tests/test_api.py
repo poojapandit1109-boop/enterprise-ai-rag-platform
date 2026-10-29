@@ -1,9 +1,11 @@
+import os
+
 from fastapi.testclient import TestClient
 
 from app.main import app
 
 
-client = TestClient(app)
+client = TestClient(app, headers={"X-API-Key": os.getenv("API_KEY", "")})
 
 
 def test_home():

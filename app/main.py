@@ -1,10 +1,17 @@
-
 import logging
 import os
+import secrets
 from pathlib import Path
 from uuid import uuid4
 
-from fastapi import FastAPI, File, HTTPException, UploadFile
+from fastapi import (
+    Depends,
+    FastAPI,
+    File,
+    Header,
+    HTTPException,
+    UploadFile,
+)
 from pydantic import BaseModel, Field
 
 from app.logging_config import configure_logging
@@ -26,6 +33,24 @@ app = FastAPI(
 )
 
 
+def require_api_key(
+    api_key: str | None = Header(default=None, alias="X-API-Key"),
+):
+    expected_key = os.getenv("API_KEY")
+
+    if not expected_key:
+        raise HTTPException(
+            status_code=503,
+            detail="API authentication is not configured.",
+        )
+
+    if not api_key or not secrets.compare_digest(api_key, expected_key):
+        raise HTTPException(
+            status_code=401,
+            detail="Invalid or missing API key.",
+        )
+
+
 class QuestionRequest(BaseModel):
     question: str = Field(min_length=1, max_length=2000)
     top_k: int = Field(default=3, ge=1, le=10)
@@ -43,7 +68,7 @@ def health():
     return {"status": "healthy"}
 
 
-@app.post("/ask")
+@app.post("/ask", dependencies=[Depends(require_api_key)])
 def ask_question(request: QuestionRequest):
     question = request.question.strip()
 
@@ -61,7 +86,10 @@ def ask_question(request: QuestionRequest):
     )
 
 
-@app.post("/documents/upload")
+@app.post(
+    "/documents/upload",
+    dependencies=[Depends(require_api_key)],
+)
 async def upload_document(
     file: UploadFile = File(...),
     title: str | None = None,
@@ -99,7 +127,7 @@ async def upload_document(
 
     UPLOAD_DIR.mkdir(parents=True, exist_ok=True)
 
-    # Use a generated storage name rather than trusting the client filename.
+    # Never trust the client-provided filename for storage.
     safe_filename = f"{uuid4().hex}.pdf"
     file_path = UPLOAD_DIR / safe_filename
     total_bytes = 0
@@ -128,8 +156,7 @@ async def upload_document(
                 detail="The uploaded file is empty.",
             )
 
-        # Check the PDF signature. The ingestion service must still parse
-        # the document successfully before it is accepted.
+        # Validate the PDF signature before ingestion.
         with file_path.open("rb") as uploaded_file:
             pdf_signature = uploaded_file.read(5)
 
@@ -139,15 +166,13 @@ async def upload_document(
                 detail="The file does not have a valid PDF signature.",
             )
 
-        result = ingest_pdf(
+        return ingest_pdf(
             file_path=str(file_path),
             filename=original_name,
             title=title,
             department=department,
             document_type=document_type,
         )
-
-        return result
 
     except HTTPException:
         raise
