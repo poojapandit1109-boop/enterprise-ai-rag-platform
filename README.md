@@ -216,7 +216,8 @@ $body = @{
     top_k = 3
 } | ConvertTo-Json
 
-Invoke-RestMethod -Uri "http://localhost:8000/ask" -Method Post -ContentType "application/json" -Body $body
+$apiKey = (Get-Content .env | Where-Object { $_ -match '^API_KEY=' } | Select-Object -First 1) -replace '^API_KEY=', ''
+Invoke-RestMethod -Uri "http://127.0.0.1:8000/ask" -Method Post -Headers @{"X-API-Key" = $apiKey} -ContentType "application/json" -Body $body
 ```
 
 ### Upload a PDF
@@ -224,7 +225,8 @@ Invoke-RestMethod -Uri "http://localhost:8000/ask" -Method Post -ContentType "ap
 Replace the example file path with a real PDF path:
 
 ```powershell
-curl.exe -X POST "http://localhost:8000/documents/upload" -F "file=@C:\path\to\document.pdf" -F "title=Architecture Guide" -F "department=Engineering" -F "document_type=Architecture"
+$apiKey = (Get-Content .env | Where-Object { $_ -match '^API_KEY=' } | Select-Object -First 1) -replace '^API_KEY=', ''
+curl.exe -X POST "http://127.0.0.1:8000/documents/upload" -H "X-API-Key: $apiKey" -F "file=@C:\path\to\document.pdf" -F "title=Architecture Guide" -F "department=Engineering" -F "document_type=Architecture"
 ```
 
 ## Testing
@@ -269,7 +271,8 @@ This is a small development evaluation set. It does not guarantee production per
 
 - Keep credentials in `.env` and out of version control.
 - Treat uploaded documents and retrieved text as untrusted input.
-- Add authentication and authorization before exposing enterprise documents.
+- API-key authentication is implemented for the question and document-upload endpoints; keep the key secret.
+- Add role-based access control and per-document authorization before serving documents to multiple enterprise users.
 - Treat prompt injection detection as one layer of defense, not a complete security solution.
 - Add rate limiting, monitoring, and secure deployment configuration before production use.
 
@@ -284,7 +287,7 @@ This is a small development evaluation set. It does not guarantee production per
 ## Future Improvements
 
 - Expand evaluation datasets and retrieval metrics.
-- Add authentication and role-based access control.
+- Add role-based access control and per-document authorization.
 - Improve document parsing and chunking.
 - Add tracing and performance monitoring.
 - Add continuous integration and automated deployment.
