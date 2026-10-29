@@ -1,333 +1,448 @@
 ﻿
 import json
+import os
 import re
 import time
 from pathlib import Path
 from statistics import mean
 
-from app.orchestrator import process_question
+from dotenv import dotenv_values
+from sqlalchemy.engine import make_url
+
 
 
 BASE_DIR = Path(__file__).resolve().parent.parent
+ENV_FILE = BASE_DIR / ".env"
 TEST_CASES_FILE = BASE_DIR / "evaluation" / "test_cases.json"
 RESULTS_FILE = BASE_DIR / "evaluation" / "evaluation_results.json"
 
-# Matches citation labels such as [Source 1] and [Source 2].
 CITATION_PATTERN = re.compile(r"\[Source\s+(\d+)\]", re.IGNORECASE)
 
 
+def configure_windows_database():
+    """Use localhost for database access from the Windows host."""
+    if not ENV_FILE.exists():
+        raise FileNotFoundError(f".env file not found: {ENV_FILE}")
+
+    database_url = dotenv_values(ENV_FILE).get("DATABASE_URL")
+    if not database_url:
+        raise ValueError("DATABASE_URL is missing from .env")
+
+    url = make_url(database_url)
+    if not url.host:
+        raise ValueError("Database host is missing from DATABASE_URL")
+
+    # Only change the host in this Python process.
+    os.environ["DATABASE_URL"] = url.set(host="localhost").render_as_string(
+        hide_password=False
+    )
+
+
 def load_test_cases():
-    with open(TEST_CASES_FILE, "r", encoding="utf-8") as file:
-        return json.load(file)
+    with TEST_CASES_FILE.open("r", encoding="utf-8") as file:
+        cases = json.load(file)
+
+    if not isinstance(cases, list):
+        raise ValueError("test_cases.json must contain a JSON list")
+
+    return cases
 
 
-def check_keywords(answer: str, expected_keywords: list[str]) -> bool:
-    answer_lower = answer.lower()
-    return all(keyword.lower() in answer_lower for keyword in expected_keywords)
+def check_keywords(answer, keywords):
+    answer_lower = (answer or "").lower()
+    return all(str(word).lower() in answer_lower for word in keywords)
 
 
-def check_status(applicable: bool, passed: bool) -> str:
-    if not applicable:
-        return "NOT APPLICABLE"
-    return "PASS" if passed else "FAIL"
+def check_expected_answer(answer, expected_values):
+    if not expected_values:
+        return None
+
+    answer_lower = (answer or "").lower()
+    return all(str(value).lower() in answer_lower for value in expected_values)
 
 
-def extract_citation_numbers(answer: str) -> list[int]:
-    return [
-        int(match)
-        for match in CITATION_PATTERN.findall(answer)
+def validate_citations(answer, sources):
+    numbers = [
+        int(number)
+        for number in CITATION_PATTERN.findall(answer or "")
     ]
 
+    if not numbers:
+        return {
+            "citation_present": False,
+            "references_valid": False,
+            "source_content_valid": False,
+            "citation_numbers": [],
+        }
 
-def validate_citations(answer: str, sources: list[dict]) -> dict:
-    """
-    Check whether cited source numbers exist in the returned source list
-    and whether those sources contain non-empty content.
+    references_valid = all(1 <= number <= len(sources) for number in numbers)
 
-    This validates citation references, not semantic factual support.
-    """
-    citation_numbers = extract_citation_numbers(answer)
-
-    available_numbers = set(range(1, len(sources) + 1))
-    cited_numbers = set(citation_numbers)
-
-    invalid_numbers = sorted(cited_numbers - available_numbers)
-
-    source_content_by_number = {
-        index: str(source.get("content") or "").strip()
-        for index, source in enumerate(sources, start=1)
-    }
-
-    empty_content_numbers = sorted(
-        number
-        for number in cited_numbers & available_numbers
-        if not source_content_by_number[number]
+    source_content_valid = references_valid and all(
+        isinstance(sources[number - 1], dict)
+        and bool(
+            sources[number - 1].get("content")
+            or sources[number - 1].get("text")
+        )
+        for number in numbers
     )
 
     return {
-        "citation_numbers": citation_numbers,
-        "citation_present": bool(citation_numbers),
-        "invalid_citation_numbers": invalid_numbers,
-        "empty_cited_source_numbers": empty_content_numbers,
-        "citation_references_valid": (
-            bool(citation_numbers)
-            and not invalid_numbers
-        ),
-        "cited_sources_have_content": (
-            bool(citation_numbers)
-            and not invalid_numbers
-            and not empty_content_numbers
-        ),
+        "citation_present": True,
+        "references_valid": references_valid,
+        "source_content_valid": source_content_valid,
+        "citation_numbers": numbers,
     }
 
 
-def evaluate_test_case(index: int, test_case: dict) -> dict:
+def evaluate_test_case(test_case, test_number):
+    from app.orchestrator import process_question
     question = test_case["question"]
-    expected_keywords = test_case["expected_keywords"]
-    expected_route = test_case["expected_route"]
+    expected_route = test_case.get("expected_route")
+    expected_keywords = test_case.get("expected_keywords", [])
+    expected_values = test_case.get("expected_answer_contains", [])
+    expect_unsupported = test_case.get("expect_unsupported", False)
 
-    start_time = time.perf_counter()
-    response = process_question(question=question, top_k=3)
-    latency = time.perf_counter() - start_time
+    started = time.perf_counter()
 
-    actual_route = response.get("route")
-    result = response.get("result") or {}
+    try:
+        response = process_question(question=question, top_k=3)
+        latency = time.perf_counter() - started
 
-    if actual_route == "blocked":
-        answer = result.get("message", "blocked")
-    else:
-        answer = result.get("answer") or result.get("message", "")
+        if not isinstance(response, dict):
+            response = {}
 
-    sources = result.get("sources", [])
-    answer_lower = answer.lower()
+        actual_route = response.get("route", "unknown")
+        result = response.get("result", {})
+        if not isinstance(result, dict):
+            result = {}
 
-    keyword_pass = check_keywords(answer, expected_keywords)
-    route_pass = actual_route == expected_route
+        if actual_route == "blocked":
+            answer = str(result.get("message", "") or "")
+        else:
+            answer = str(
+                result.get("answer", result.get("message", "")) or ""
+            )
 
-    not_found = "not found" in answer_lower
-    source_available = len(sources) > 0
+        sources = result.get("sources", [])
+        if not isinstance(sources, list):
+            sources = []
 
-    # Citation checks apply only to supported RAG answers.
-    rag_answer_applicable = actual_route == "rag" and not not_found
+        answer_lower = answer.lower()
+        not_found = "not found" in answer_lower
 
-    citation_result = validate_citations(answer, sources)
+        keyword_check = check_keywords(answer, expected_keywords)
+        route_check = (
+            actual_route == expected_route
+            if expected_route is not None
+            else True
+        )
 
-    citation_presence_pass = (
-        not rag_answer_applicable
-        or citation_result["citation_present"]
-    )
-    citation_reference_pass = (
-        not rag_answer_applicable
-        or citation_result["citation_references_valid"]
-    )
-    cited_content_pass = (
-        not rag_answer_applicable
-        or citation_result["cited_sources_have_content"]
-    )
-    retrieval_pass = (
-        not rag_answer_applicable
-        or source_available
-    )
+        retrieval_check = (
+            (not sources if expect_unsupported and not_found else bool(sources))
+            if actual_route == "rag"
+            else True
+        )
 
-    # Security check applies to tests intended to be blocked.
-    security_applicable = expected_route == "blocked"
-    security_pass = (
-        not security_applicable
-        or actual_route == "blocked"
-    )
+        citation_info = validate_citations(answer, sources)
+        citation_applicable = actual_route == "rag" and not not_found
 
-    # Unsupported handling applies only to explicitly marked tests.
-    unsupported_expected = test_case.get("expect_unsupported", False)
-    unsupported_applicable = unsupported_expected
-    unsupported_pass = (
-        actual_route == "rag"
-        and not_found
-        and not source_available
-    )
+        citation_presence_check = (
+            citation_info["citation_present"]
+            if citation_applicable
+            else True
+        )
+        citation_reference_check = (
+            citation_info["references_valid"]
+            if citation_applicable
+            else True
+        )
+        cited_source_content_check = (
+            citation_info["source_content_valid"]
+            if citation_applicable
+            else True
+        )
 
-    checks = {
-        "keyword_check": keyword_pass,
-        "route_check": route_pass,
-        "citation_presence_check": citation_presence_pass,
-        "citation_reference_check": citation_reference_pass,
-        "cited_source_content_check": cited_content_pass,
-        "retrieval_check": retrieval_pass,
-        "security_check": security_pass,
-        "unsupported_question_check": unsupported_pass,
-    }
+        security_check = (
+            actual_route == "blocked"
+            if expected_route == "blocked"
+            else None
+        )
 
-    applicability = {
-        "keyword_check": True,
-        "route_check": True,
-        "citation_presence_check": rag_answer_applicable,
-        "citation_reference_check": rag_answer_applicable,
-        "cited_source_content_check": rag_answer_applicable,
-        "retrieval_check": rag_answer_applicable,
-        "security_check": security_applicable,
-        "unsupported_question_check": unsupported_applicable,
-    }
+        unsupported_check = (
+            actual_route == "rag" and not_found and not sources
+            if expect_unsupported
+            else None
+        )
 
-    check_statuses = {
-        name: check_status(applicability[name], checks[name])
-        for name in checks
-    }
+        expected_answer_check = check_expected_answer(answer, expected_values)
 
-    applicable_checks_passed = all(
-        checks[name]
-        for name in checks
-        if applicability[name]
-    )
+        checks = {
+            "keyword_check": "PASS" if keyword_check else "FAIL",
+            "route_check": "PASS" if route_check else "FAIL",
+            "citation_presence_check": (
+                "NOT APPLICABLE"
+                if not citation_applicable
+                else (
+                    "PASS" if citation_presence_check else "FAIL"
+                )
+            ),
+            "citation_reference_check": (
+                "NOT APPLICABLE"
+                if not citation_applicable
+                else (
+                    "PASS" if citation_reference_check else "FAIL"
+                )
+            ),
+            "cited_source_content_check": (
+                "NOT APPLICABLE"
+                if not citation_applicable
+                else (
+                    "PASS" if cited_source_content_check else "FAIL"
+                )
+            ),
+            "retrieval_check": "PASS" if retrieval_check else "FAIL",
+            "security_check": (
+                "NOT APPLICABLE"
+                if security_check is None
+                else ("PASS" if security_check else "FAIL")
+            ),
+            "unsupported_question_check": (
+                "NOT APPLICABLE"
+                if unsupported_check is None
+                else ("PASS" if unsupported_check else "FAIL")
+            ),
+            "expected_answer_check": (
+                "NOT APPLICABLE"
+                if expected_answer_check is None
+                else ("PASS" if expected_answer_check else "FAIL")
+            ),
+        }
 
-    return {
-        "test_case": index,
-        "question": question,
-        "expected_route": expected_route,
-        "actual_route": actual_route,
-        "checks": check_statuses,
-        "keyword_check": keyword_pass,
-        "route_check": route_pass,
-        "citation_check": check_statuses["citation_presence_check"],
-        "citation_reference_check": check_statuses["citation_reference_check"],
-        "cited_source_content_check": check_statuses["cited_source_content_check"],
-        "retrieval_check": check_statuses["retrieval_check"],
-        "security_check": check_statuses["security_check"],
-        "unsupported_question_check": check_statuses["unsupported_question_check"],
-        "citation_numbers": citation_result["citation_numbers"],
-        "invalid_citation_numbers": citation_result["invalid_citation_numbers"],
-        "empty_cited_source_numbers": citation_result["empty_cited_source_numbers"],
-        "citation_present": citation_result["citation_present"],
-        "citation_applicable": rag_answer_applicable,
-        "source_available": source_available,
-        "source_count": len(sources),
-        "unsupported_expected": unsupported_expected,
-        "unsupported_detected": not_found,
-        "passed": applicable_checks_passed,
-        "latency_seconds": round(latency, 3),
-        "failure_reasons": [
-            name
-            for name in checks
-            if applicability[name] and not checks[name]
-        ],
-    }
+        required_checks = [
+            keyword_check,
+            route_check,
+            retrieval_check,
+        ]
+
+        if citation_applicable:
+            required_checks.extend([
+                citation_presence_check,
+                citation_reference_check,
+                cited_source_content_check,
+            ])
+
+        if security_check is not None:
+            required_checks.append(security_check)
+
+        if unsupported_check is not None:
+            required_checks.append(unsupported_check)
+
+        if expected_answer_check is not None:
+            required_checks.append(expected_answer_check)
+
+        return {
+            "test_case": test_number,
+            "question": question,
+            "expected_route": expected_route,
+            "actual_route": actual_route,
+            "answer": answer,
+            "checks": checks,
+            "keyword_check": keyword_check,
+            "route_check": route_check,
+            "citation_check": (
+                "NOT APPLICABLE"
+                if not citation_applicable
+                else ("PASS" if citation_presence_check else "FAIL")
+            ),
+            "citation_reference_check": (
+                "NOT APPLICABLE"
+                if not citation_applicable
+                else ("PASS" if citation_reference_check else "FAIL")
+            ),
+            "cited_source_content_check": (
+                "NOT APPLICABLE"
+                if not citation_applicable
+                else ("PASS" if cited_source_content_check else "FAIL")
+            ),
+            "retrieval_check": retrieval_check,
+            "security_check": checks["security_check"],
+            "unsupported_question_check": checks["unsupported_question_check"],
+            "expected_answer_check": checks["expected_answer_check"],
+            "expected_answer_contains": expected_values,
+            "citation_numbers": citation_info["citation_numbers"],
+            "source_count": len(sources),
+            "latency_seconds": round(latency, 3),
+            "passed": all(required_checks),
+            "error": None,
+        }
+
+    except Exception as exc:
+        latency = time.perf_counter() - started
+        error_checks = {
+            "keyword_check": "FAIL",
+            "route_check": "FAIL",
+            "citation_presence_check": "FAIL",
+            "citation_reference_check": "FAIL",
+            "cited_source_content_check": "FAIL",
+            "retrieval_check": "FAIL",
+            "security_check": (
+                "NOT APPLICABLE"
+                if expected_route != "blocked"
+                else "FAIL"
+            ),
+            "unsupported_question_check": (
+                "FAIL" if expect_unsupported else "NOT APPLICABLE"
+            ),
+            "expected_answer_check": (
+                "FAIL" if expected_values else "NOT APPLICABLE"
+            ),
+        }
+
+        return {
+            "test_case": test_number,
+            "question": question,
+            "expected_route": expected_route,
+            "actual_route": "error",
+            "answer": "",
+            "checks": error_checks,
+            "keyword_check": False,
+            "route_check": False,
+            "citation_check": "FAIL",
+            "citation_reference_check": "FAIL",
+            "cited_source_content_check": "FAIL",
+            "retrieval_check": False,
+            "security_check": error_checks["security_check"],
+            "unsupported_question_check": error_checks[
+                "unsupported_question_check"
+            ],
+            "expected_answer_check": error_checks["expected_answer_check"],
+            "expected_answer_contains": expected_values,
+            "citation_numbers": [],
+            "source_count": 0,
+            "latency_seconds": round(latency, 3),
+            "passed": False,
+            "error": f"{type(exc).__name__}: {exc}",
+        }
 
 
-def percentage(numerator: int, denominator: int):
-    if denominator == 0:
-        return None
-    return round(numerator / denominator * 100, 2)
+def percentage(passed, total):
+    return round(100.0 * passed / total, 2) if total else 0.0
+
+
+def check_pass_count(results, check_name):
+    applicable = [
+        item["checks"].get(check_name, "NOT APPLICABLE")
+        for item in results
+    ]
+    applicable = [
+        value for value in applicable
+        if value != "NOT APPLICABLE"
+    ]
+    passed = sum(value == "PASS" for value in applicable)
+    return passed, len(applicable)
 
 
 def run_evaluation():
+    configure_windows_database()
     test_cases = load_test_cases()
     results = []
 
+    print(f"Running {len(test_cases)} evaluation tests...\n")
+
     for index, test_case in enumerate(test_cases, start=1):
-        result = evaluate_test_case(index, test_case)
+        result = evaluate_test_case(test_case, index)
         results.append(result)
 
         status = "PASS" if result["passed"] else "FAIL"
-        print(f"\n[{status}] Test {index}: {result['question']}")
         print(
-            f"  Route: {result['actual_route']} "
-            f"(expected: {result['expected_route']})"
+            f"[{status}] Test {index}: {result['question']} "
+            f"({result['latency_seconds']}s)"
         )
 
-        for name, check in result["checks"].items():
-            print(f"  {name}: {check}")
+        for check_name, check_status in result["checks"].items():
+            print(f"    {check_name}: {check_status}")
 
-        print(f"  Citation numbers: {result['citation_numbers']}")
-        print(f"  Invalid citation numbers: {result['invalid_citation_numbers']}")
-        print(f"  Empty cited sources: {result['empty_cited_source_numbers']}")
-        print(f"  Sources returned: {result['source_count']}")
-        print(f"  Latency: {result['latency_seconds']} seconds")
-
-        if result["failure_reasons"]:
-            print("  Failed checks: " + ", ".join(result["failure_reasons"]))
+        if result.get("error"):
+            print(f"    error: {result['error']}")
 
     total = len(results)
-    passed = sum(result["passed"] for result in results)
-    failed = total - passed
-    latencies = [result["latency_seconds"] for result in results]
+    passed_tests = sum(item["passed"] for item in results)
+    latencies = [item["latency_seconds"] for item in results]
 
-    citation_results = [
-        result for result in results if result["citation_applicable"]
-    ]
-    unsupported_results = [
-        result for result in results if result["unsupported_expected"]
-    ]
-    security_results = [
-        result for result in results
-        if result["expected_route"] == "blocked"
-    ]
+    route_passes = sum(bool(item["route_check"]) for item in results)
+    keyword_passes = sum(bool(item["keyword_check"]) for item in results)
+    retrieval_passes = sum(bool(item["retrieval_check"]) for item in results)
+
+    citation_presence_pass, citation_presence_total = check_pass_count(
+        results, "citation_presence_check"
+    )
+    citation_reference_pass, citation_reference_total = check_pass_count(
+        results, "citation_reference_check"
+    )
+    cited_content_pass, cited_content_total = check_pass_count(
+        results, "cited_source_content_check"
+    )
+    security_pass, security_total = check_pass_count(results, "security_check")
+    unsupported_pass, unsupported_total = check_pass_count(
+        results, "unsupported_question_check"
+    )
+    exact_answer_pass, exact_answer_total = check_pass_count(
+        results, "expected_answer_check"
+    )
 
     summary = {
         "total_tests": total,
-        "passed_tests": passed,
-        "failed_tests": failed,
-        "score_percent": percentage(passed, total),
-        "route_accuracy_percent": percentage(
-            sum(result["route_check"] for result in results),
-            total,
-        ),
+        "passed_tests": passed_tests,
+        "failed_tests": total - passed_tests,
+        "score_percent": percentage(passed_tests, total),
+        "keyword_accuracy_percent": percentage(keyword_passes, total),
+        "route_accuracy_percent": percentage(route_passes, total),
         "citation_presence_percent": percentage(
-            sum(
-                result["checks"]["citation_presence_check"] == "PASS"
-                for result in citation_results
-            ),
-            len(citation_results),
+            citation_presence_pass, citation_presence_total
         ),
         "citation_reference_validity_percent": percentage(
-            sum(
-                result["checks"]["citation_reference_check"] == "PASS"
-                for result in citation_results
-            ),
-            len(citation_results),
+            citation_reference_pass, citation_reference_total
         ),
         "cited_source_content_percent": percentage(
-            sum(
-                result["checks"]["cited_source_content_check"] == "PASS"
-                for result in citation_results
-            ),
-            len(citation_results),
+            cited_content_pass, cited_content_total
         ),
-        "source_availability_percent": percentage(
-            sum(result["source_available"] for result in citation_results),
-            len(citation_results),
-        ),
-        "security_pass_percent": percentage(
-            sum(result["security_check"] == "PASS" for result in security_results),
-            len(security_results),
-        ),
+        "source_availability_percent": percentage(retrieval_passes, total),
+        "security_pass_percent": percentage(security_pass, security_total),
         "unsupported_handling_pass_percent": percentage(
-            sum(
-                result["unsupported_question_check"] == "PASS"
-                for result in unsupported_results
-            ),
-            len(unsupported_results),
+            unsupported_pass, unsupported_total
         ),
+        "expected_answer_accuracy_percent": percentage(
+            exact_answer_pass, exact_answer_total
+        ),
+        "expected_answer_tests": exact_answer_total,
         "average_latency_seconds": round(mean(latencies), 3) if latencies else 0,
         "max_latency_seconds": round(max(latencies), 3) if latencies else 0,
         "results": results,
     }
 
-    with open(RESULTS_FILE, "w", encoding="utf-8") as file:
+    RESULTS_FILE.parent.mkdir(parents=True, exist_ok=True)
+    with RESULTS_FILE.open("w", encoding="utf-8") as file:
         json.dump(summary, file, indent=2, ensure_ascii=False)
 
     print("\n========== EVALUATION SUMMARY ==========")
-    print(f"Total tests: {total}")
-    print(f"Passed: {passed}")
-    print(f"Failed: {failed}")
-    print(f"Overall pass rate: {summary['score_percent']}%")
+    print(f"Total tests: {summary['total_tests']}")
+    print(f"Passed: {summary['passed_tests']}")
+    print(f"Failed: {summary['failed_tests']}")
+    print(f"Overall score: {summary['score_percent']}%")
+    print(f"Keyword accuracy: {summary['keyword_accuracy_percent']}%")
     print(f"Route accuracy: {summary['route_accuracy_percent']}%")
-    print(f"Citation presence: {summary['citation_presence_percent']}%")
-    print(f"Citation reference validity: {summary['citation_reference_validity_percent']}%")
-    print(f"Cited source content: {summary['cited_source_content_percent']}%")
-    print(f"Source availability: {summary['source_availability_percent']}%")
-    print(f"Security checks passed: {summary['security_pass_percent']}%")
-    print(f"Unsupported handling passed: {summary['unsupported_handling_pass_percent']}%")
-    print(f"Average latency: {summary['average_latency_seconds']} seconds")
-    print(f"Maximum latency: {summary['max_latency_seconds']} seconds")
-    print(f"Results saved to: {RESULTS_FILE}")
+    print(
+        "Citation reference validity: "
+        f"{summary['citation_reference_validity_percent']}%"
+    )
+    print(
+        "Exact-answer accuracy: "
+        f"{summary['expected_answer_accuracy_percent']}% "
+        f"({summary['expected_answer_tests']} applicable tests)"
+    )
+    print(f"Average latency: {summary['average_latency_seconds']}s")
+    print(f"Maximum latency: {summary['max_latency_seconds']}s")
+    print(f"\nResults saved to: {RESULTS_FILE}")
 
 
 if __name__ == "__main__":

@@ -1,3 +1,4 @@
+
 [
   {
     "question": "What security measures should enterprise AI systems use?",
@@ -92,5 +93,35 @@
     ],
     "expected_route": "rag",
     "expect_unsupported": true
+  },
+  {
+    "question": "How many employees does the Orion department have?",
+    "expected_keywords": [
+      "42"
+    ],
+    "expected_route": "rag",
+    "expected_answer_contains": [
+      "42"
+    ]
+  },
+  {
+    "question": "What is the internal project code of the Orion department?",
+    "expected_keywords": [
+      "ORION-742"
+    ],
+    "expected_route": "rag",
+    "expected_answer_contains": [
+      "ORION-742"
+    ]
+  },
+  {
+    "question": "What is the document retention period?",
+    "expected_keywords": [
+      "90 days"
+    ],
+    "expected_route": "rag",
+    "expected_answer_contains": [
+      "90 days"
+    ]
   }
 ]
