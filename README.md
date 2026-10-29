@@ -259,9 +259,9 @@ venv\Scripts\python.exe scripts\run_evaluation.py
 
 The evaluation report is saved under `evaluation/evaluation_results.json`. Running the evaluation again updates that report, so review the results before committing changes.
 
-The current committed evaluation report records **12 of 12 configured test cases passing (100%)**, with zero failed cases. The configured checks cover query routing, citation presence and validity, cited-source content, source availability, security handling, unsupported-question handling, and response latency.
+The current committed evaluation report records **15 of 15 configured test cases passing (100%)**, with zero failed cases. The configured checks cover query routing, citation presence and validity, cited-source content, source availability, security handling, unsupported-question handling, and response latency.
 
-The report records an average latency of `0.229` seconds and a maximum latency of `1.12` seconds for that evaluation run. These measurements are specific to the tested environment and cases.
+The report records an average latency of `0.119` seconds and a maximum latency of `0.577` seconds for that evaluation run. These measurements are specific to the tested environment and cases.
 
 This is a small development evaluation set. It does not guarantee production performance, answer quality, or security.
 
@@ -297,3 +297,4 @@ This is a portfolio and development project demonstrating an end-to-end RAG work
 ## Author
 
 **GitHub:** [poojapandit1109-boop](https://github.com/poojapandit1109-boop)
+
