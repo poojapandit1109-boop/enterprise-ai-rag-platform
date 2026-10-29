@@ -1,4 +1,4 @@
-﻿# Enterprise AI RAG Platform
+# Enterprise AI RAG Platform
 
 An enterprise-oriented Retrieval-Augmented Generation (RAG) platform built with Python, FastAPI, PostgreSQL, and pgvector. It ingests PDF documents, retrieves relevant information, reranks results, and generates answers grounded in retrieved context with source citations.
 
@@ -55,40 +55,40 @@ For detailed system architecture and technology decisions, see [Detailed RAG Arc
 
 ```text
 enterprise-ai-rag-platform/
-├── app/
-│   ├── chunker.py
-│   ├── context_builder.py
-│   ├── database.py
-│   ├── hybrid_search.py
-│   ├── ingestion_service.py
-│   ├── keyword_search.py
-│   ├── main.py
-│   ├── orchestrator.py
-│   ├── pdf_loader.py
-│   ├── query_router.py
-│   ├── rag_service.py
-│   ├── reranker.py
-│   ├── security.py
-│   ├── sql_agent.py
-│   └── vector_search.py
-├── architecture/
-│   └── rag_architecture.md
-├── data/
-├── evaluation/
-│   └── evaluation_results.json
-├── notebooks/
-├── scripts/
-│   ├── run_evaluation.py
-│   └── run_tests_windows.py
-├── tests/
-│   └── test_api.py
-├── .env.example
-├── .gitignore
-├── api-openapi.json
-├── docker-compose.yml
-├── Dockerfile
-├── requirements.txt
-└── README.md
++-- app/
+�   +-- chunker.py
+�   +-- context_builder.py
+�   +-- database.py
+�   +-- hybrid_search.py
+�   +-- ingestion_service.py
+�   +-- keyword_search.py
+�   +-- main.py
+�   +-- orchestrator.py
+�   +-- pdf_loader.py
+�   +-- query_router.py
+�   +-- rag_service.py
+�   +-- reranker.py
+�   +-- security.py
+�   +-- sql_agent.py
+�   +-- vector_search.py
++-- architecture/
+�   +-- rag_architecture.md
++-- data/
++-- evaluation/
+�   +-- evaluation_results.json
++-- notebooks/
++-- scripts/
+�   +-- run_evaluation.py
+�   +-- run_tests_windows.py
++-- tests/
+�   +-- test_api.py
++-- .env.example
++-- .gitignore
++-- api-openapi.json
++-- docker-compose.yml
++-- Dockerfile
++-- requirements.txt
++-- README.md
 ```
 
 ## Prerequisites
@@ -261,7 +261,7 @@ The evaluation report is saved under `evaluation/evaluation_results.json`. Runni
 
 The current committed evaluation report records **15 of 15 configured test cases passing (100%)**, with zero failed cases. The configured checks cover query routing, citation presence and validity, cited-source content, source availability, security handling, unsupported-question handling, and response latency.
 
-The report records an average latency of `0.119` seconds and a maximum latency of `0.577` seconds for that evaluation run. These measurements are specific to the tested environment and cases.
+The report records an average latency of `0.101` seconds and a maximum latency of `0.412` seconds for that evaluation run. These measurements are specific to the tested environment and cases.
 
 This is a small development evaluation set. It does not guarantee production performance, answer quality, or security.
 
