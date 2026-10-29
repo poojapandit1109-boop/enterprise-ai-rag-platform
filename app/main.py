@@ -8,6 +8,7 @@ from fastapi import (
     Depends,
     FastAPI,
     File,
+    Form,
     Header,
     HTTPException,
     UploadFile,
@@ -92,9 +93,9 @@ def ask_question(request: QuestionRequest):
 )
 async def upload_document(
     file: UploadFile = File(...),
-    title: str | None = None,
-    department: str | None = None,
-    document_type: str | None = None,
+    title: str | None = Form(default=None),
+    department: str | None = Form(default=None),
+    document_type: str | None = Form(default=None),
 ):
     # Handle both Windows and Linux path separators.
     original_name = (
